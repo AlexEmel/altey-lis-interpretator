@@ -16,28 +16,29 @@ interface IRequestSource {
   };
 }
 
-interface IPatientInfo {
+export interface IPatientInfo {
   id: string;
   sex: ESex;
   birthDate: string | null;
 }
 
-interface IObservationRefence {
+export interface IObservationRefence {
   refLow: number | null;
   refHigh: number | null;
   refText: string | null;
 }
 
-interface IObservationTest {
-  id: string;
+export interface IObservationTest {
+  code: string;
+  name: string;
   type: EObservationTestType;
   value: string;
   ref: IObservationRefence | null;
 }
 
-interface IObservationPanel {
-  id: string;
-  name: string;
+export interface IObservationPanel {
+  panelCode: string;
+  panelName: string;
   observations: IObservationTest[];
 }
 

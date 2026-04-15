@@ -1,0 +1,13 @@
+[
+  {
+    "id": "iron_deficiency_pattern",
+    "title": "Вероятный железодефицит",
+    "panelDependancies": ["CBC"],
+    "factDependancies": ["CBC.HGB"],
+    "conditions": { "fact": "obs.CBC.HGB.value", "condition": "ltRefLow" },
+    "outcome": {
+      "code": "probable_iron_deficiency",
+      "summary": "Совокупность изменений может соответствовать железодефицитному состоянию."
+    }
+  }
+]
