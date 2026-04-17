@@ -13,8 +13,7 @@ export class InterpretationService {
   public async interpretate(request: InterpretationRequestDto) {
     try {
       const facts = this.factService.mapFacts(request);
-      this.ruleService.processFacts(facts);
-      return facts;
+      return this.ruleService.evaluateFacts(facts);
     } catch (err) {
       throw err;
     }

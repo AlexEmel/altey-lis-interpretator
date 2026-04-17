@@ -1,4 +1,3 @@
 export type TOperator = 'and' | 'or';
 
-export type TCondition = 'ltRefLow' | 'gtRefLow';
-
+export type TCondition = 'ltRefLow' | 'gtRefHigh';

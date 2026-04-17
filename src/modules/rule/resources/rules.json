@@ -1,9 +1,20 @@
 [
   {
+    "id": "test_rule",
+    "title": "Тестовое правило",
+    "panelDependencies": ["CBC"],
+    "testDependencies": ["CBC.WBC"],
+    "conditions": { "fact": "obs.CBC.HGB.value", "condition": "gtRefHigh" },
+    "outcome": {
+      "code": "probable_test_rule",
+      "summary": "Сработало тестовое правило!"
+    }
+  },
+  {
     "id": "iron_deficiency_pattern",
     "title": "Вероятный железодефицит",
-    "panelDependancies": ["CBC"],
-    "factDependancies": ["CBC.HGB"],
+    "panelDependencies": ["CBC"],
+    "testDependencies": ["CBC.HGB"],
     "conditions": { "fact": "obs.CBC.HGB.value", "condition": "ltRefLow" },
     "outcome": {
       "code": "probable_iron_deficiency",

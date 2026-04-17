@@ -1,10 +1,11 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { TPanelAliasDict, TTestAliasDict } from './types/fact.type';
 import * as panelDictJson from './resources/panel-dict.json';
 import * as testDictJson from './resources/test-dict.json';
 import { InterpretationRequestDto } from '../interpretation/dto/interpretation-request.dto';
 import { IFact, IRuleFacts } from './interfaces/fact.interface';
 import { IObservationTest } from '../interpretation/interfaces/interpretation-request.interface';
+import { EObservationTestType } from '../interpretation/enums/request.enum';
 
 @Injectable()
 export class FactService {
@@ -85,17 +86,42 @@ export class FactService {
     obs: IObservationTest,
     sourcePanelCode: string,
   ): IFact {
-    const fact: IFact = {
-      value: obs.value,
-      refLow: obs.ref.refLow,
-      refHigh: obs.ref.refHigh,
-      refText: obs.ref.refText,
-      testType: obs.type,
-      testName: obs.name,
-      sourceTestCode: obs.code,
-      sourcePanelCode,
-    };
+    try {
+      const fact: IFact = {
+        value: this.parseTestValue(obs.value, obs.type, obs.name),
+        refLow: obs.ref.refLow,
+        refHigh: obs.ref.refHigh,
+        refText: obs.ref.refText,
+        testType: obs.type,
+        testName: obs.name,
+        sourceTestCode: obs.code,
+        sourcePanelCode,
+      };
 
-    return fact;
+      return fact;
+    } catch (err) {
+      throw err;
+    }
+  }
+
+  private parseTestValue(
+    value: string,
+    type: EObservationTestType,
+    testName: string,
+  ): number | string {
+    try {
+      let parsedValue: number | string = value;
+      if (type === EObservationTestType.RANGE) {
+        parsedValue = Number(value);
+        if (isNaN(parsedValue)) {
+          throw new BadRequestException(
+            `${testName}: invalid result value`,
+          );
+        }
+      }
+      return parsedValue;
+    } catch (err) {
+      throw err;
+    }
   }
 }
