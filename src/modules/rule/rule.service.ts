@@ -28,12 +28,14 @@ export class RuleService {
       const idx = this.getRequestIndex(request);
       const relevantRules = this.getRelevantTestRules(idx);
       const evaluations = []; // TODO type this
+
       for (const rule of relevantRules) {
         const evaluation = this.evaluateRule(rule, request);
         if (evaluation) {
           evaluations.push(evaluation);
         }
       }
+
       return evaluations;
     } catch (err) {
       throw err;
@@ -44,19 +46,21 @@ export class RuleService {
     try {
       const condition = rule.conditions;
       const isGroup = isGroupCondition(condition);
-      let finding: boolean = false;
+      const findings: IFactCondition[] = [];
 
       if (!isGroup) {
-        finding = this.evaluateCondition(request, condition);
+        const evaluation = this.evaluateCondition(request, condition);
+        if (!evaluation) return false;
+        findings.push(condition);
       } else {
-        finding = this.evaluateGroup(request, condition);
+        const evaluation = this.evaluateGroup(request, condition);
+        if (!evaluation) return false;
+        findings.push(...evaluation);
       }
-
-      if (!finding) return false;
 
       return {
         ruleId: rule.id,
-        findings: [condition],
+        findings: findings.map(f => f.description),
         outcome: rule.outcome,
       };
     } catch (err) {
@@ -64,28 +68,28 @@ export class RuleService {
     }
   }
 
-  private evaluateGroup(facts: IRequestFacts, conditions: IConditionGroup) {
+  private evaluateGroup(
+    facts: IRequestFacts,
+    conditions: IConditionGroup,
+  ): IFactCondition[] | false {
     try {
       const operator = conditions.operator;
-      const findings: boolean[] = [];
+      const findings: IFactCondition[] = [];
 
       for (const item of conditions.items) {
         const finding = this.evaluateCondition(facts, item);
 
         if (!finding && operator === 'and') return false;
 
-        if (finding && operator === 'or') return true;
+        if (finding && operator === 'or') {
+          findings.push(item);
+          return findings;
+        }
 
-        findings.push(finding);
+        findings.push(item);
       }
 
-      if (operator === 'and') {
-        return findings.every((f) => f);
-      }
-
-      if (operator === 'or') {
-        return findings.some((f) => f);
-      }
+      return findings; 
     } catch (err) {
       throw err;
     }
@@ -174,7 +178,7 @@ export class RuleService {
       const relevantRules = new Set<IRule>();
       for (const test of idx.availableTests) {
         const rules = this.ruleIndex.byTest[test];
-        if (rules.length > 0) {
+        if (rules && rules.length > 0) {
           rules.forEach((r) => relevantRules.add(r));
         }
       }

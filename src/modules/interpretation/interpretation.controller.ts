@@ -3,7 +3,7 @@ import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { InterpretationService } from './interpretation.service';
 import { InterpretationRequestDto } from './dto/interpretation-request.dto';
 
-@Controller('interpretations')
+@Controller('interpretate')
 @ApiTags('Interpretation Controller')
 export class InterpretationController {
   constructor(private readonly interpretationService: InterpretationService) {}
