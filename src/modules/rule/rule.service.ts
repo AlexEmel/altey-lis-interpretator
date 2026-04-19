@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { IRuleFacts } from '../fact/interfaces/fact.interface';
+import { IRequestFacts } from '../fact/interfaces/fact.interface';
 import {
+  IConditionGroup,
   IFactCondition,
   IFactIndex,
   IRule,
@@ -22,14 +23,16 @@ export class RuleService {
     };
   }
 
-  public evaluateFacts(facts: IRuleFacts) {
+  public evaluateFacts(request: IRequestFacts) {
     try {
-      const idx = this.getFactIndex(facts);
+      const idx = this.getRequestIndex(request);
       const relevantRules = this.getRelevantTestRules(idx);
       const evaluations = []; // TODO type this
       for (const rule of relevantRules) {
-        const evaluation = this.evaluateRule(rule, facts);
-        evaluations.push(evaluation);
+        const evaluation = this.evaluateRule(rule, request);
+        if (evaluation) {
+          evaluations.push(evaluation);
+        }
       }
       return evaluations;
     } catch (err) {
@@ -37,61 +40,85 @@ export class RuleService {
     }
   }
 
-  private evaluateRule(rule: IRule, facts: IRuleFacts) {
+  private evaluateRule(rule: IRule, request: IRequestFacts) {
     try {
       const condition = rule.conditions;
       const isGroup = isGroupCondition(condition);
+      let finding: boolean = false;
+
       if (!isGroup) {
-        const finding = this.evaluateCondition(facts, condition);
-        if (!finding) return false;
-        return {
-          ruleId: rule.id,
-          findings: [condition],
-          outcome: rule.outcome,
-        };
+        finding = this.evaluateCondition(request, condition);
+      } else {
+        finding = this.evaluateGroup(request, condition);
       }
+
+      if (!finding) return false;
+
+      return {
+        ruleId: rule.id,
+        findings: [condition],
+        outcome: rule.outcome,
+      };
     } catch (err) {
       throw err;
     }
   }
 
-  private evaluateCondition(facts: IRuleFacts, factCondition: IFactCondition) {
+  private evaluateGroup(facts: IRequestFacts, conditions: IConditionGroup) {
     try {
-      const factPath = factCondition.fact.split('.');
-      const targetTest = facts.obs[factPath[1]][factPath[2]];
-      // TODO probably want to use targetTest.type check before evaluation
-      if (
-        (factCondition.condition === 'ltRefLow' &&
-          targetTest.refLow === null) ||
-        (factCondition.condition === 'gtRefHigh' && targetTest.refHigh === null)
-      ) {
-        throw new BadRequestException(); // TODO err text
+      const operator = conditions.operator;
+      const findings: boolean[] = [];
+
+      for (const item of conditions.items) {
+        const finding = this.evaluateCondition(facts, item);
+
+        if (!finding && operator === 'and') return false;
+
+        if (finding && operator === 'or') return true;
+
+        findings.push(finding);
       }
-      if (factPath[3] === 'value') {
-        switch (factCondition.condition) {
-          case 'ltRefLow':
-            return +targetTest.value < targetTest.refLow;
-          case 'gtRefHigh':
-            return +targetTest.value > targetTest.refHigh;
-          default:
-            return false;
-        }
+
+      if (operator === 'and') {
+        return findings.every((f) => f);
+      }
+
+      if (operator === 'or') {
+        return findings.some((f) => f);
       }
     } catch (err) {
       throw err;
     }
   }
 
-  private getFactIndex(facts: IRuleFacts): IFactIndex {
+  private evaluateCondition(
+    request: IRequestFacts,
+    condition: IFactCondition,
+  ): boolean {
+    try {
+      const [panel, test, fact] = condition.fact.split('.');
+      const target = request.facts[panel][test];
+
+      if (!target) {
+        return false;
+      }
+
+      return target[fact];
+    } catch (err) {
+      throw err;
+    }
+  }
+
+  private getRequestIndex(request: IRequestFacts): IFactIndex {
     try {
       const index = {
         availablePanels: new Set<string>(),
         availableTests: new Set<string>(),
       };
 
-      for (const panel in facts.obs) {
+      for (const panel in request.tests) {
         index.availablePanels.add(panel);
-        for (const test in facts.obs[panel]) {
+        for (const test in request.tests[panel]) {
           index.availableTests.add(`${panel}.${test}`);
         }
       }

@@ -1,9 +1,9 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { TPanelAliasDict, TTestAliasDict } from './types/fact.type';
+import { TFacts, TPanelAliasDict, TTestAliasDict } from './types/fact.type';
 import * as panelDictJson from './resources/panel-dict.json';
 import * as testDictJson from './resources/test-dict.json';
 import { InterpretationRequestDto } from '../interpretation/dto/interpretation-request.dto';
-import { IFact, IRuleFacts } from './interfaces/fact.interface';
+import { ITest, IRequestFacts } from './interfaces/fact.interface';
 import { IObservationTest } from '../interpretation/interfaces/interpretation-request.interface';
 import { EObservationTestType } from '../interpretation/enums/request.enum';
 
@@ -17,10 +17,11 @@ export class FactService {
     this.TEST_DICT = testDictJson;
   }
 
-  public mapFacts(request: InterpretationRequestDto) {
+  public normalizeRequest(request: InterpretationRequestDto) {
     try {
-      const facts: IRuleFacts = {
-        obs: {},
+      const normalized: IRequestFacts = {
+        facts: {},
+        tests: {},
         patient: {
           sex: request.patient.sex,
           age: this.getAge(request.patient.birthDate),
@@ -32,28 +33,33 @@ export class FactService {
         const panelAlias = this.PANEL_DICT[panel.panelCode];
 
         if (!panelAlias) {
-          //log mapping error
-          continue;
+          throw new BadRequestException(`${panel}: invalid panel code`);
         }
 
-        if (!facts.obs[panelAlias]) {
-          facts.obs[panelAlias] = {};
+        if (!normalized.tests[panelAlias]) {
+          normalized.tests[panelAlias] = {};
+        }
+
+        if (!normalized.facts[panelAlias]) {
+          normalized.facts[panelAlias] = {};
         }
 
         for (const observation of panel.observations) {
-          const factAlias = this.TEST_DICT[panelAlias][observation.code];
+          const testAlias = this.TEST_DICT[panelAlias][observation.code];
 
-          if (!factAlias) {
-            //log mapping error
-            continue;
+          if (!testAlias) {
+            throw new BadRequestException(
+              `${observation}: invalid observation code`,
+            );
           }
 
-          const fact = this.mapObservationToFact(observation, panel.panelCode);
-          facts.obs[panelAlias][factAlias] = fact;
+          const test = this.mapObservationToTest(observation, panel.panelCode);
+          normalized.tests[panelAlias][testAlias] = test;
+          normalized.facts[panelAlias][testAlias] = this.calculateFacts(test);
         }
       }
 
-      return facts;
+      return normalized;
     } catch (err) {
       throw err;
     }
@@ -82,12 +88,12 @@ export class FactService {
     }
   }
 
-  private mapObservationToFact(
+  private mapObservationToTest(
     obs: IObservationTest,
     sourcePanelCode: string,
-  ): IFact {
+  ): ITest {
     try {
-      const fact: IFact = {
+      const fact: ITest = {
         value: this.parseTestValue(obs.value, obs.type, obs.name),
         refLow: obs.ref.refLow,
         refHigh: obs.ref.refHigh,
@@ -114,12 +120,59 @@ export class FactService {
       if (type === EObservationTestType.RANGE) {
         parsedValue = Number(value);
         if (isNaN(parsedValue)) {
-          throw new BadRequestException(
-            `${testName}: invalid result value`,
-          );
+          throw new BadRequestException(`${testName}: invalid result value`);
         }
       }
       return parsedValue;
+    } catch (err) {
+      throw err;
+    }
+  }
+
+  private calculateFacts(test: ITest): TFacts {
+    try {
+      if (
+        test.testType === EObservationTestType.RANGE &&
+        typeof test.value === 'number'
+      ) {
+        return this.calculateRangeTestFacts(
+          test.value,
+          test.refLow,
+          test.refHigh,
+        );
+      }
+    } catch (err) {
+      throw err;
+    }
+  }
+
+  private calculateRangeTestFacts(
+    value: number,
+    refLow: number | null,
+    refHigh: number | null,
+  ): TFacts {
+    try {
+      const facts: TFacts = {
+        isNormal: true,
+        isPathology: false,
+        isLow: false,
+        isHigh: false,
+      };
+
+      if (refLow) {
+        facts.isLow = value < refLow;
+      }
+
+      if (refHigh) {
+        facts.isHigh = value > refHigh;
+      }
+
+      if (facts.isLow || facts.isHigh) {
+        facts.isNormal = false;
+        facts.isPathology = true;
+      }
+
+      return facts;
     } catch (err) {
       throw err;
     }

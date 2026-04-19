@@ -12,8 +12,8 @@ export class InterpretationService {
 
   public async interpretate(request: InterpretationRequestDto) {
     try {
-      const facts = this.factService.mapFacts(request);
-      return this.ruleService.evaluateFacts(facts);
+      const normalized = this.factService.normalizeRequest(request);
+      return this.ruleService.evaluateFacts(normalized);
     } catch (err) {
       throw err;
     }

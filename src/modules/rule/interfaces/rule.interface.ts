@@ -2,7 +2,6 @@ import { TCondition, TOperator } from '../types/rule.type';
 
 export interface IFactCondition {
   fact: string;
-  condition: TCondition;
 }
 
 export interface IConditionGroup {

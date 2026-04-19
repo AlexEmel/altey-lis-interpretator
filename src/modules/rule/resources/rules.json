@@ -3,8 +3,8 @@
     "id": "test_rule",
     "title": "Тестовое правило",
     "panelDependencies": ["CBC"],
-    "testDependencies": ["CBC.WBC"],
-    "conditions": { "fact": "obs.CBC.HGB.value", "condition": "gtRefHigh" },
+    "testDependencies": ["CBC.HGB"],
+    "conditions": { "fact": "CBC.HGB.isNormal" },
     "outcome": {
       "code": "probable_test_rule",
       "summary": "Сработало тестовое правило!"
@@ -15,10 +15,28 @@
     "title": "Вероятный железодефицит",
     "panelDependencies": ["CBC"],
     "testDependencies": ["CBC.HGB"],
-    "conditions": { "fact": "obs.CBC.HGB.value", "condition": "ltRefLow" },
+    "conditions": { "fact": "CBC.HGB.isLow" },
     "outcome": {
       "code": "probable_iron_deficiency",
       "summary": "Совокупность изменений может соответствовать железодефицитному состоянию."
+    }
+  },
+  {
+    "id": "cbc_anemia_pattern",
+    "title": "Анемический паттерн",
+    "scope": "panel",
+    "panelDependencies": ["CBC"],
+    "testDependencies": ["CBC.HGB", "CBC.RBC", "CBC.HCT"],
+    "conditions": {
+      "operator": "and",
+      "items": [
+        { "fact": "CBC.HGB.isLow" },
+        { "fact": "CBC.RBC.isLow" }
+      ]
+    },
+    "outcome": {
+      "code": "anemia_pattern",
+      "summary": "Выявлены изменения, характерные для анемического синдрома."
     }
   }
 ]

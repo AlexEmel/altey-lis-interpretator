@@ -2,8 +2,9 @@ import {
   EObservationTestType,
   ESex,
 } from 'src/modules/interpretation/enums/request.enum';
+import { TFacts } from '../types/fact.type';
 
-export interface IFact {
+export interface ITest {
   value: number | string;
   refLow: number | null;
   refHigh: number | null;
@@ -14,9 +15,12 @@ export interface IFact {
   sourceTestCode: string;
 }
 
-export interface IRuleFacts {
-  obs: {
-    [key: string]: { [key: string]: IFact };
+export interface IRequestFacts {
+  facts: {
+    [key: string]: { [key: string]: TFacts };
+  };
+  tests: {
+    [key: string]: { [key: string]: ITest };
   };
   patient: {
     sex: ESex;
